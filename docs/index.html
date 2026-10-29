@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pet Segmentation Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working tool at the top (controls + three result panels), then the facts behind the model. */
+:root {
+  --bg: #f4f6f1;
+  --surface: #ffffff;
+  --fg: #1a1e18;
+  --muted: #5b6557;
+  --line: #dde2d7;
+  --accent: #1d7f36;
+  --accent-soft: #e3f1e4;
+  --warn: #9a5b00;
+  --warn-soft: #fbf0dc;
+  --check: #e9ece5;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111410; --surface: #191d17; --fg: #e7ebe3; --muted: #9ba596; --line: #2c3329;
+    --accent: #52c26c; --accent-soft: #1d2d1f; --warn: #f0b45a; --warn-soft: #2e2416; --check: #232821;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111410; --surface: #191d17; --fg: #e7ebe3; --muted: #9ba596; --line: #2c3329;
+  --accent: #52c26c; --accent-soft: #1d2d1f; --warn: #f0b45a; --warn-soft: #2e2416; --check: #232821;
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 40px 56px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 40px; }
+.wrap > *, .tool > *, .controls > * { min-width: 0; }
+
+header { display: grid; gap: 14px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-size: clamp(32px, 5vw, 48px); line-height: 1.05; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.lead { margin: 0; max-width: 64ch; color: var(--muted); font-size: 16px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.facts span { color: var(--muted); }
+.facts b { color: var(--fg); font-weight: 500; }
+
+.tool { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 20px; }
+.controls { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .controls { grid-template-columns: minmax(0, 1fr); } }
+
+.drop { border: 1.5px dashed var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; transition: border-color .15s, background .15s; }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.hint { color: var(--muted); font-size: 13px; }
+.btn { font: 500 14px var(--font-body); border-radius: 8px; padding: 9px 14px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: var(--surface); }
+.btn:hover { filter: brightness(1.08); }
+.btn:focus-visible, .sample:focus-visible, input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+.samples { display: flex; flex-wrap: wrap; gap: 8px; }
+.sample { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); font: 500 13px var(--font-body); cursor: pointer; }
+.sample img { width: 34px; height: 34px; object-fit: cover; border-radius: 5px; display: block; }
+.sample[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.sample small { display: block; color: var(--muted); font-weight: 400; font-size: 11px; line-height: 1.2; }
+
+.sliders { display: grid; gap: 14px; }
+.slider { display: grid; gap: 4px; }
+.slider label { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.slider output { font-family: var(--font-mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+
+.status { font-family: var(--font-mono); font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; min-height: 20px; }
+.status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.status.ready .dot { background: var(--accent); }
+.status.busy .dot { background: var(--warn); }
+.status.error { color: var(--warn); }
+
+.panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .panels { grid-template-columns: minmax(0, 1fr); } }
+figure { margin: 0; display: grid; gap: 6px; }
+figcaption { font-size: 12px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.frame { border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--check); aspect-ratio: 4 / 3; display: grid; place-items: center; }
+.frame canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+.frame.checker { background-color: var(--surface); background-image: conic-gradient(var(--check) 25%, transparent 0 50%, var(--check) 0 75%, transparent 0); background-size: 18px 18px; }
+
+.stats { display: flex; flex-wrap: wrap; gap: 10px 32px; font-variant-numeric: tabular-nums; }
+.stat { display: grid; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat b { font-family: var(--font-mono); font-weight: 500; font-size: 18px; }
+.warning { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+
+.info { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+@media (max-width: 860px) { .info { grid-template-columns: minmax(0, 1fr); } }
+.info section { min-width: 0; display: grid; gap: 10px; align-content: start; }
+h2 { font-family: var(--font-display); font-size: 20px; margin: 0; text-wrap: balance; }
+.info p, .info li { color: var(--muted); font-size: 14px; margin: 0; }
+.info ol, .info ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.info code { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg); }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 500; }
+td.num { font-family: var(--font-mono); }
+tr.best td { color: var(--accent); }
+footer { color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 16px; }
+footer a { color: inherit; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Upgaming Talent Growth Program · ML / CV</div>
+    <h1>Pet Segmentation</h1>
+    <p class="lead">Upload a photo of a cat or a dog. A U-Net with a ResNet18 encoder, trained on the Oxford-IIIT Pet dataset, separates the animal from the background. The model runs in your browser, so the photo never leaves your device.</p>
+    <div class="facts">
+      <span>Test IoU <b>0.900</b></span>
+      <span>Test Dice <b>0.946</b></span>
+      <span>Model <b>14.4 MB</b> INT8 ONNX</span>
+      <span>Input <b>256 × 256</b></span>
+    </div>
+  </header>
+
+  <main class="tool" aria-label="Segmentation tool">
+    <div class="controls">
+      <div class="drop" id="drop">
+        <div class="drop-row">
+          <label class="btn" for="file" id="pick">Choose a photo</label>
+          <input type="file" id="file" accept="image/*">
+          <span class="hint">or drop a JPG / PNG here</span>
+        </div>
+        <div class="samples" role="group" aria-label="Sample photos">
+          <button class="sample" id="s-cat" data-src="samples/cat.jpg" aria-pressed="false"><img src="samples/cat.jpg" alt=""><span>Cat<small>Birman, easy</small></span></button>
+          <button class="sample" id="s-dog" data-src="samples/dog.jpg" aria-pressed="false"><img src="samples/dog.jpg" alt=""><span>Dog<small>Beagle, easy</small></span></button>
+          <button class="sample" id="s-small" data-src="samples/small.jpg" aria-pressed="false"><img src="samples/small.jpg" alt=""><span>Small dog<small>6% of image, hard</small></span></button>
+        </div>
+      </div>
+      <div class="sliders">
+        <div class="slider">
+          <label for="thr">Threshold <output id="thr-out">0.50</output></label>
+          <input type="range" id="thr" min="0.05" max="0.95" step="0.05" value="0.5">
+        </div>
+        <div class="slider">
+          <label for="alpha">Overlay opacity <output id="alpha-out">0.50</output></label>
+          <input type="range" id="alpha" min="0" max="1" step="0.05" value="0.5">
+        </div>
+        <div class="status" id="status"><span class="dot"></span><span id="status-text">Loading the model (14 MB)…</span></div>
+      </div>
+    </div>
+
+    <div class="panels">
+      <figure><figcaption>Original</figcaption><div class="frame"><canvas id="c-orig" width="4" height="3"></canvas></div></figure>
+      <figure><figcaption>Overlay</figcaption><div class="frame"><canvas id="c-over" width="4" height="3"></canvas></div></figure>
+      <figure><figcaption>Cutout</figcaption><div class="frame checker"><canvas id="c-cut" width="4" height="3"></canvas></div></figure>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span>Inference</span><b id="st-ms">–</b></div>
+      <div class="stat"><span>Pet area</span><b id="st-area">–</b></div>
+      <div class="stat"><span>Image size</span><b id="st-size">–</b></div>
+    </div>
+    <div class="warning" id="warn" hidden>The pet covers less than 1% of the image, so the model probably did not find an animal. Try a lower threshold or a different photo.</div>
+  </main>
+
+  <div class="info">
+    <section>
+      <h2>How a prediction is made</h2>
+      <ol>
+        <li>The photo is resized to 256 × 256 and normalized with ImageNet mean and std, the same way as in training.</li>
+        <li>The U-Net returns one logit per pixel. A sigmoid turns it into the probability that the pixel belongs to the pet.</li>
+        <li>The probability map is resized back to the photo's size first, then the threshold is applied, so mask edges stay smooth.</li>
+      </ol>
+      <p>This page runs the INT8 model with ONNX Runtime Web. Its output is identical to ONNX Runtime in Python for the same input.</p>
+    </section>
+    <section>
+      <h2>Experiments</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Model</th><th>Val IoU</th><th>Train time</th></tr></thead>
+          <tbody>
+            <tr><td>Full fine-tuning</td><td class="num">0.870</td><td class="num">74 min</td></tr>
+            <tr class="best"><td>Frozen encoder</td><td class="num">0.897</td><td class="num">52 min</td></tr>
+            <tr><td>Frozen, INT8 ONNX</td><td class="num">0.896</td><td class="num">–</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Freezing the pretrained encoder worked better and trained faster on a CPU. On the held-out test set (3,662 images) the final model reaches IoU 0.900 and Dice 0.946.</p>
+    </section>
+    <section>
+      <h2>Where it fails</h2>
+      <ul>
+        <li>Small pets: IoU drops to 0.85 when the pet covers less than 20% of the photo.</li>
+        <li>Distractors such as toys and teddy bears get segmented as pets.</li>
+        <li>Dark pets on dark backgrounds, unusual poses and occlusion.</li>
+        <li>Thin parts like ears, legs and tails, and fur edges.</li>
+      </ul>
+      <p>The model always looks for one cat or dog. A photo without a pet can still produce a mask.</p>
+    </section>
+  </div>
+
+  <footer>Training data and sample photos: Oxford-IIIT Pet Dataset (O. M. Parkhi, A. Vedaldi, A. Zisserman, C. V. Jawahar, CVPR 2012), licensed CC BY-SA 4.0. The sample photos come from the test split, which the model never saw during training.</footer>
+</div>
+
+<script src="ort/ort.wasm.min.js"></script>
+<script>
+(() => {
+  const SIZE = 256;                 // model input size, same as in training
+  const MAX_SIDE = 1024;            // large phone photos are scaled down before processing
+  const MEAN = [0.485, 0.456, 0.406];
+  const STD = [0.229, 0.224, 0.225];
+
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("status"), statusText = $("status-text");
+  const thr = $("thr"), alpha = $("alpha");
+  const cOrig = $("c-orig"), cOver = $("c-over"), cCut = $("c-cut");
+  let session = null;
+  let current = null;   // { w, h, pixels: Uint8ClampedArray RGBA, prob: Uint8Array (0..255 per pixel) }
+  let busy = false;
+
+  function setStatus(text, state) {
+    statusText.textContent = text;
+    statusEl.className = "status" + (state ? " " + state : "");
+  }
+
+  async function loadModel() {
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = new URL("ort/", location.href).href;
+    session = await ort.InferenceSession.create("model_int8.onnx", { executionProviders: ["wasm"] });
+  }
+
+  // Photo -> RGBA pixels at (at most) MAX_SIDE; browsers apply the EXIF orientation of phone photos
+  async function readImage(blob) {
+    const bmp = await createImageBitmap(blob, { imageOrientation: "from-image" });
+    const scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(bmp, 0, 0, w, h);
+    bmp.close();
+    return { canvas, w, h, pixels: ctx.getImageData(0, 0, w, h).data };
+  }
+
+  function preprocess(srcCanvas) {
+    const c = document.createElement("canvas");
+    c.width = SIZE; c.height = SIZE;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(srcCanvas, 0, 0, SIZE, SIZE);
+    const d = ctx.getImageData(0, 0, SIZE, SIZE).data;
+    const n = SIZE * SIZE, x = new Float32Array(3 * n);
+    for (let i = 0; i < n; i++) {
+      for (let ch = 0; ch < 3; ch++) x[ch * n + i] = (d[4 * i + ch] / 255 - MEAN[ch]) / STD[ch];
+    }
+    return x;
+  }
+
+  // logits [256x256] -> probability map resized to the photo's size (bilinear), stored as 0..255
+  function probabilityMap(logits, w, h) {
+    const small = document.createElement("canvas");
+    small.width = SIZE; small.height = SIZE;
+    const sctx = small.getContext("2d");
+    const img = sctx.createImageData(SIZE, SIZE);
+    for (let i = 0; i < SIZE * SIZE; i++) {
+      const p = 255 / (1 + Math.exp(-logits[i]));
+      img.data[4 * i] = img.data[4 * i + 1] = img.data[4 * i + 2] = p;
+      img.data[4 * i + 3] = 255;
+    }
+    sctx.putImageData(img, 0, 0);
+    const big = document.createElement("canvas");
+    big.width = w; big.height = h;
+    const bctx = big.getContext("2d");
+    bctx.imageSmoothingEnabled = true;
+    bctx.drawImage(small, 0, 0, w, h);
+    const d = bctx.getImageData(0, 0, w, h).data;
+    const prob = new Uint8Array(w * h);
+    for (let i = 0; i < prob.length; i++) prob[i] = d[4 * i];
+    return prob;
+  }
+
+  function render() {
+    $("thr-out").textContent = Number(thr.value).toFixed(2);
+    $("alpha-out").textContent = Number(alpha.value).toFixed(2);
+    if (!current) return;
+    const { w, h, pixels, prob } = current;
+    const t = Number(thr.value) * 255, a = Number(alpha.value);
+    const over = new ImageData(new Uint8ClampedArray(pixels), w, h);
+    const cut = new ImageData(new Uint8ClampedArray(pixels), w, h);
+    let pet = 0;
+    for (let i = 0; i < prob.length; i++) {
+      const isPet = prob[i] > t;
+      if (isPet) {
+        pet++;
+        over.data[4 * i] = (1 - a) * pixels[4 * i];
+        over.data[4 * i + 1] = (1 - a) * pixels[4 * i + 1] + a * 255;
+        over.data[4 * i + 2] = (1 - a) * pixels[4 * i + 2];
+      }
+      cut.data[4 * i + 3] = isPet ? 255 : 0;
+    }
+    for (const [c, data] of [[cOver, over], [cCut, cut]]) {
+      c.width = w; c.height = h;
+      c.getContext("2d").putImageData(data, 0, 0);
+    }
+    const area = (100 * pet) / prob.length;
+    $("st-area").textContent = area.toFixed(1) + "%";
+    $("warn").hidden = area >= 1;
+  }
+
+  async function segment(blob, sampleId) {
+    if (!session || busy) return;
+    busy = true;
+    document.querySelectorAll(".sample").forEach((b) => b.setAttribute("aria-pressed", String(b.id === sampleId)));
+    setStatus("Segmenting…", "busy");
+    try {
+      const img = await readImage(blob);
+      cOrig.width = img.w; cOrig.height = img.h;
+      cOrig.getContext("2d").drawImage(img.canvas, 0, 0);
+      const input = new ort.Tensor("float32", preprocess(img.canvas), [1, 3, SIZE, SIZE]);
+      const t0 = performance.now();
+      const out = await session.run({ input });
+      const ms = performance.now() - t0;
+      current = { w: img.w, h: img.h, pixels: img.pixels, prob: probabilityMap(out.logits.data, img.w, img.h) };
+      $("st-ms").textContent = Math.round(ms) + " ms";
+      $("st-size").textContent = img.w + " × " + img.h;
+      render();
+      setStatus("Ready. Choose another photo or move the sliders.", "ready");
+    } catch (err) {
+      setStatus("Could not process this image: " + (err && err.message ? err.message : err), "error");
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function segmentUrl(url, sampleId) {
+    const res = await fetch(url);
+    await segment(await res.blob(), sampleId);
+  }
+
+  thr.addEventListener("input", render);
+  alpha.addEventListener("input", render);
+  $("file").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) segment(f, null); e.target.value = ""; });
+  document.querySelectorAll(".sample").forEach((b) => b.addEventListener("click", () => segmentUrl(b.dataset.src, b.id)));
+
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => { const f = e.dataTransfer.files[0]; if (f && f.type.startsWith("image/")) segment(f, null); });
+
+  render();
+  loadModel()
+    .then(() => segmentUrl("samples/cat.jpg", "s-cat"))
+    .catch((err) => setStatus("The model failed to load: " + (err && err.message ? err.message : err), "error"));
+})();
+</script>
+</body>
+</html>

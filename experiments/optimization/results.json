@@ -1,0 +1,42 @@
+{
+  "environment": {
+    "cpu": "Intel64 Family 6 Model 191 Stepping 2, GenuineIntel",
+    "threads": 6,
+    "torch": "2.14.1+cpu",
+    "onnxruntime": "1.31.0",
+    "img_size": 256,
+    "batch_size": 1,
+    "n_params": 14328209
+  },
+  "export_max_abs_diff": 1.1205673217773438e-05,
+  "onnx_files": {
+    "fp32": "C:\\Users\\tmanagadze\\Desktop\\Personal\\pet-segmentation\\artifacts\\baseline\\model_fp32.onnx",
+    "int8": "C:\\Users\\tmanagadze\\Desktop\\Personal\\pet-segmentation\\artifacts\\baseline\\model_int8.onnx"
+  },
+  "variants": [
+    {
+      "name": "PyTorch FP32",
+      "size_mb": 54.7623929977417,
+      "median_ms": 95.21575004328042,
+      "p90_ms": 150.93669996131214,
+      "iou": 0.8701549257859993,
+      "dice": 0.9275505356693441
+    },
+    {
+      "name": "ONNX Runtime FP32",
+      "size_mb": 54.66249752044678,
+      "median_ms": 39.68619997613132,
+      "p90_ms": 48.715580045245595,
+      "iou": 0.8701549257859993,
+      "dice": 0.9275505356693441
+    },
+    {
+      "name": "ONNX Runtime INT8 (QDQ)",
+      "size_mb": 13.830489158630371,
+      "median_ms": 22.07859989721328,
+      "p90_ms": 29.66724012512714,
+      "iou": 0.8697320637166391,
+      "dice": 0.9273085768339638
+    }
+  ]
+}

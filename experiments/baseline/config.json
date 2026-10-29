@@ -1,0 +1,20 @@
+{
+  "args": {
+    "exp_name": "baseline",
+    "encoder": "resnet18",
+    "epochs": 10,
+    "lr": 0.001,
+    "batch_size": 16,
+    "img_size": 256,
+    "freeze_encoder": false,
+    "num_workers": 0,
+    "seed": 42,
+    "overfit_batch": false,
+    "resume": false
+  },
+  "train_size": 3122,
+  "val_size": 551,
+  "total_params": 14328209,
+  "trainable_params": 14328209,
+  "torch_version": "2.14.1+cpu"
+}
