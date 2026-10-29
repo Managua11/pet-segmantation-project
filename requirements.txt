@@ -1,0 +1,33 @@
+# PyTorch (CPU build on this machine; install with --index-url https://download.pytorch.org/whl/cpu)
+torch
+torchvision
+
+# Models
+segmentation-models-pytorch
+timm
+
+# Data / utils
+numpy
+pillow
+opencv-python
+matplotlib
+pandas
+scikit-learn
+tqdm
+truststore
+pyyaml
+
+# Optimization / benchmarking
+onnx
+onnxruntime
+
+# Demo app
+streamlit
+fastapi
+uvicorn
+python-multipart
+
+# Dev
+jupyter
+ipykernel
+pytest
